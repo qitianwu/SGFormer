@@ -1,8 +1,8 @@
 # SGFormer: Simplified Graph Transformers
 
-The official implementation for NeurIPS23 paper "".
+The official implementation for NeurIPS23 paper "Simplifying and Empowering Transformers for Large-Graph Representations".
 
-Related material: [[Paper]()]
+Related material: [[Paper](https://arxiv.org/pdf/2306.10759.pdf)]
 
 SGFormer is a graph encoder backbone that efficiently computes all-pair interactions with one-layer attentive propagation.
 
@@ -14,7 +14,7 @@ SGFormer is built upon our previous works on scalable graph Transformers with li
 
 ### Citation
 
-If you find our codes useful, please cite our work. Thank you
+If you find our codes useful, please cite our work. Thank you.
 
 ```bibtex
       @inproceedings{
