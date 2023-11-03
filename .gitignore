@@ -6,7 +6,6 @@ __pycache__/
 
 # Pycharm
 .idea/
-medium/
 nodeformer/
 */time-batch.py
 */time-sample.py
@@ -112,3 +111,5 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+try*.sh
