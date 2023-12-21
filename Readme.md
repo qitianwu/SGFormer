@@ -12,9 +12,37 @@ SGFormer is built upon our previous works on scalable graph Transformers with li
 
 [2023.10.28] We release the code for the model on large graph benchmarks. More detailed info will be updated soon.
 
+[2023.12.20] We supplement more details for how to run the code.
+
+## Model and Results
+
+The model adopts a simple architecture and is comprised of a one-layer global attention and a shallow GNN.
+
+<img width="862" alt="image" src="https://github.com/qitianwu/SGFormer/assets/22075007/3b46ec4c-1532-4d8e-b2d7-3bc1368c7ef8">
+
+The following tables present the results for standard node classification tasks on medium-sized and large-sized graphs.
+
+<img width="1104" alt="image" src="https://github.com/qitianwu/SGFormer/assets/22075007/a017202b-14c5-490f-9ca5-dd21c755add4">
+
+<img width="1099" alt="image" src="https://github.com/qitianwu/SGFormer/assets/22075007/aeb29fb7-8ac2-407d-9599-23f681b34672">
+
+## Dataset
+
+One can download the datasets (Planetoid, Deezer, Pokec, Actor/Film) from the google drive link below:
+
+https://drive.google.com/drive/folders/1rr3kewCBUvIuVxA6MJ90wzQuF-NnCRtf?usp=drive_link
+
+For Chameleon and Squirrel, we use the [new splits](https://github.com/yandex-research/heterophilous-graphs/tree/main) that filter out the overlapped nodes.
+
+For the OGB datasets, they will be downloaded automatically when running the code.
+
+## Run the codes
+
+Please refer to the bash script `run.sh` in each folder for running the training and evaluation pipeline.
+
 ### Citation
 
-If you find our codes useful, please cite our work. Thank you.
+If you find our code and model useful, please cite our work. Thank you!
 
 ```bibtex
       @inproceedings{
