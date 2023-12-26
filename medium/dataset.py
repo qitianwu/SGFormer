@@ -26,7 +26,7 @@ class NCDataset(object):
             - name (str): name of the dataset
             - root (str): root directory to store the dataset folder
             - meta_dict: dictionary that stores all the meta-information about data. Default is None, 
-                    but when something is passed, it uses its information. Useful for debugging for external contributers.
+                    but when something is passed, it uses its information. Useful for debugging for external contributors.
 
         Usage after construction: 
 
