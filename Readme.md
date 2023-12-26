@@ -2,7 +2,7 @@
 
 The official implementation for NeurIPS23 paper "Simplifying and Empowering Transformers for Large-Graph Representations".
 
-Related material: [[Paper](https://arxiv.org/pdf/2306.10759.pdf)]
+Related material: [[Paper](https://arxiv.org/pdf/2306.10759.pdf)], [[Blog](https://zhuanlan.zhihu.com/p/674548352)]
 
 SGFormer is a graph encoder backbone that efficiently computes all-pair interactions with one-layer attentive propagation.
 
