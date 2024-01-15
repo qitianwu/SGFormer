@@ -1,6 +1,6 @@
 # SGFormer: Simplified Graph Transformers
 
-The official implementation for NeurIPS23 paper "Simplifying and Empowering Transformers for Large-Graph Representations".
+The official implementation for NeurIPS23 paper "SGFormer: Simplifying and Empowering Transformers for Large-Graph Representations".
 
 Related material: [[Paper](https://arxiv.org/pdf/2306.10759.pdf)], [[Blog](https://zhuanlan.zhihu.com/p/674548352)]
 
@@ -47,7 +47,7 @@ If you find our code and model useful, please cite our work. Thank you!
 ```bibtex
       @inproceedings{
         wu2023sgformer,
-        title={Simplifying and Empowering Transformers for Large-Graph Representations},
+        title={SGFormer: Simplifying and Empowering Transformers for Large-Graph Representations},
         author={Qitian Wu and Wentao Zhao and Chenxiao Yang and Hengrui Zhang and Fan Nie and Haitian Jiang and Yatao Bian and Junchi Yan},
         booktitle={Advances in Neural Information Processing Systems (NeurIPS)},
         year={2023}
