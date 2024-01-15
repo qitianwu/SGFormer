@@ -132,33 +132,21 @@ class TransConvLayer(nn.Module):
         ks = ks / torch.norm(ks, p=2)  # [L, H, M]
         N = qs.shape[0]
 
-        # # numerator
-        # kvs = torch.einsum("lhm,lhd->hmd", ks, vs)
-        # attention_num = torch.einsum("nhm,hmd->nhd", qs, kvs)  # [N, H, D]
-        # attention_num += N * vs
-        #
-        # # denominator
-        # all_ones = torch.ones([ks.shape[0]]).to(ks.device)
-        # ks_sum = torch.einsum("lhm,l->hm", ks, all_ones)
-        # attention_normalizer = torch.einsum("nhm,hm->nh", qs, ks_sum)  # [N, H]
-        #
-        # # attentive aggregated results
-        # attention_normalizer = torch.unsqueeze(
-        #     attention_normalizer, len(attention_normalizer.shape))  # [N, H, 1]
-        # attention_normalizer += torch.ones_like(attention_normalizer) * N
-        # attn_output = attention_num / attention_normalizer  # [N, H, D]
-
         # numerator
-        attention_num = torch.sigmoid(torch.einsum("nhm,lhm->nlh", qs, ks))  # [N, L, H]
+        kvs = torch.einsum("lhm,lhd->hmd", ks, vs)
+        attention_num = torch.einsum("nhm,hmd->nhd", qs, kvs)  # [N, H, D]
+        attention_num += N * vs
 
         # denominator
         all_ones = torch.ones([ks.shape[0]]).to(ks.device)
-        attention_normalizer = torch.einsum("nlh,l->nh", attention_num, all_ones)
-        attention_normalizer = attention_normalizer.unsqueeze(1).repeat(1, ks.shape[0], 1)  # [N, L, H]
+        ks_sum = torch.einsum("lhm,l->hm", ks, all_ones)
+        attention_normalizer = torch.einsum("nhm,hm->nh", qs, ks_sum)  # [N, H]
 
-        # compute attention and attentive aggregated results
-        attention = attention_num / attention_normalizer
-        attn_output = torch.einsum("nlh,lhd->nhd", attention, vs)  # [N, H, D]
+        # attentive aggregated results
+        attention_normalizer = torch.unsqueeze(
+            attention_normalizer, len(attention_normalizer.shape))  # [N, H, 1]
+        attention_normalizer += torch.ones_like(attention_normalizer) * N
+        attn_output = attention_num / attention_normalizer  # [N, H, D]
 
         # compute attention for visualization if needed
         if output_attn:
