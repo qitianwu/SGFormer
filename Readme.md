@@ -28,6 +28,10 @@ The following tables present the results for standard node classification tasks 
 
 <img width="1099" alt="image" src="https://github.com/qitianwu/SGFormer/assets/22075007/aeb29fb7-8ac2-407d-9599-23f681b34672">
 
+## Requirements
+
+For datasets except ogbn-papers100M, we used the environment with package versions indicated in `./large/requirement.txt`. For ogbn-papers100M, one needs PyG version >=2.0 for running the code. 
+
 ## Dataset
 
 One can download the datasets (Planetoid, Deezer, Pokec, Actor/Film) from the google drive link below:
