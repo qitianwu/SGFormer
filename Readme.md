@@ -14,6 +14,8 @@ SGFormer is built upon our previous works on scalable graph Transformers with li
 
 [2023.12.20] We supplement more details for how to run the code.
 
+[2024.05.05] We supplement the code for testing time and memory in the directory ./medium/ 
+
 ## Model and Results
 
 The model adopts a simple architecture and is comprised of a one-layer global attention and a shallow GNN.
