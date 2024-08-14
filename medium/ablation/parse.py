@@ -1,5 +1,8 @@
 from models import *
 from ours import *
+from oursSOFT import *
+from oursGAT import *
+from oursNF import *
 from nodeformer import *
 from difformer import *
 from graphormer import *
@@ -96,9 +99,23 @@ def parse_method(method, args, c, d, device):
                           num_heads=args.num_heads).to(device)
     elif method == 'ours':
         if args.use_graph:
-            gnn=parse_method(args.backbone, args, args.hidden_channels, d, device)
-            model = SGFormer(d, args.hidden_channels, c, num_layers=args.ours_layers, alpha=args.alpha, dropout=args.ours_dropout, num_heads=args.num_heads,
-                    use_bn=args.use_bn, use_residual=args.ours_use_residual, use_graph=args.use_graph, use_weight=args.ours_use_weight, use_act=args.ours_use_act, graph_weight=args.graph_weight, gnn=gnn, aggregate=args.aggregate).to(device)
+            if args.attention == 'gcn':
+                gnn=parse_method(args.backbone, args, args.hidden_channels, d, device)
+                model = SGFormer(d, args.hidden_channels, c, num_layers=args.ours_layers, alpha=args.alpha, dropout=args.ours_dropout, num_heads=args.num_heads,
+                        use_bn=args.use_bn, use_residual=args.ours_use_residual, use_graph=args.use_graph, use_weight=args.ours_use_weight, use_act=args.ours_use_act, graph_weight=args.graph_weight, gnn=gnn, aggregate=args.aggregate).to(device)
+            elif args.attention == 'softmax':
+                gnn=parse_method(args.backbone, args, args.hidden_channels, d, device)
+                model = SGFormerSOFT(d, args.hidden_channels, c, num_layers=args.ours_layers, alpha=args.alpha, dropout=args.ours_dropout, num_heads=args.num_heads,
+                     use_bn=args.use_bn, use_residual=args.ours_use_residual, use_graph=args.use_graph, use_weight=args.ours_use_weight, use_act=args.ours_use_act, graph_weight=args.graph_weight, gnn=gnn, aggregate=args.aggregate).to(device)
+            elif args.attention == 'gat':
+                gnn=parse_method(args.backbone, args, args.hidden_channels, d, device)
+                model = SGFormerGAT(d, args.hidden_channels, c, num_layers=args.ours_layers, alpha=args.alpha, dropout=args.ours_dropout, num_heads=args.num_heads,
+                     use_bn=args.use_bn, use_residual=args.ours_use_residual, use_graph=args.use_graph, use_weight=args.ours_use_weight, use_act=args.ours_use_act, graph_weight=args.graph_weight, gnn=gnn, aggregate=args.aggregate).to(device)
+            elif args.attention == 'nodeformer':
+                gnn=parse_method(args.backbone, args, args.hidden_channels, d, device)
+                model = SGFormerNF(d, args.hidden_channels, c, num_layers=args.ours_layers, alpha=args.alpha, dropout=args.ours_dropout, num_heads=args.num_heads,
+                     use_bn=args.use_bn, use_residual=args.ours_use_residual, use_graph=args.use_graph, use_weight=args.ours_use_weight, use_act=args.ours_use_act, graph_weight=args.graph_weight, gnn=gnn, aggregate=args.aggregate).to(device)
+
         else:
             model = Ours(d, args.hidden_channels, c, num_layers=args.num_layers, alpha=args.alpha, dropout=args.dropout, num_heads=args.num_heads,
                      use_bn=args.use_bn, use_residual=args.ours_use_residual, use_graph=args.use_graph, use_weight=args.ours_use_weight, use_act=args.ours_use_act, graph_weight=args.graph_weight, aggregate=args.aggregate).to(device)
