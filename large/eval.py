@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-
+from data_utils import eval_aa, eval_kappa
 from torch_geometric.utils import subgraph
 
 @torch.no_grad()
@@ -9,28 +9,38 @@ def evaluate(model, dataset, split_idx, eval_func, criterion, args, result=None)
         out = result
     else:
         model.eval()
-        out = model(dataset.graph['node_feat'], dataset.graph['edge_index'])
+        out = model(dataset.graph['node_feat'], dataset.graph['edge_index'], dataset.graph['edge_weight'])
 
-    train_acc = eval_func(
-        dataset.label[split_idx['train']], out[split_idx['train']])
-    valid_acc = eval_func(
-        dataset.label[split_idx['valid']], out[split_idx['valid']])
-    test_acc = eval_func(
+    test_oa = eval_func(
         dataset.label[split_idx['test']], out[split_idx['test']])
 
     if args.dataset in ('yelp-chi', 'deezer-europe', 'twitch-e', 'fb100', 'ogbn-proteins'):
         if dataset.label.shape[1] == 1:
-            true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1)
+            if torch.cuda.is_available():
+                true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1).to("cuda:0")
+            else:
+                true_label = F.one_hot(dataset.label, dataset.label.max() + 1).squeeze(1).to("cpu")
         else:
             true_label = dataset.label
         valid_loss = criterion(out[split_idx['valid']], true_label.squeeze(1)[
             split_idx['valid']].to(torch.float))
+    elif args.dataset in 'Indian_pines':
+        valid_idx = split_idx['valid']
+        valid_labels = dataset.label[valid_idx].squeeze(1).to("cuda:0")
+        valid_labels -= 1
+        valid_loss = criterion(out[valid_idx], valid_labels)
     else:
         out = F.log_softmax(out, dim=1)
+        # debug
         valid_loss = criterion(
             out[split_idx['valid']], dataset.label.squeeze(1)[split_idx['valid']])
 
-    return train_acc, valid_acc, test_acc, valid_loss, out
+    # return (train_oa, valid_oa, test_oa, valid_loss,
+    #         train_aa, valid_aa, test_aa,
+    #         train_kpp, valid_kpp, test_kpp,
+    #         out)
+    return test_oa, valid_loss, out
+
 
 @torch.no_grad()
 def evaluate_large(model, dataset, split_idx, eval_func, criterion, args, device="cpu", result=None):

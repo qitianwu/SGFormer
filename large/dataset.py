@@ -7,7 +7,7 @@ import scipy.io
 from sklearn.preprocessing import label_binarize
 import torch_geometric.transforms as T
 
-from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits
+from data_utils import rand_train_test_idx, even_quantile_labels, to_sparse_tensor, dataset_drive_url, class_rand_splits, hsi_splits
 
 from torch_geometric.datasets import Planetoid, Amazon, Coauthor
 from torch_geometric.transforms import NormalizeFeatures
@@ -24,6 +24,10 @@ import os
 
 from torch_geometric.utils import subgraph, k_hop_subgraph, to_undirected
 import pickle as pkl
+
+import csv
+import json
+from build_graph import build_graph_by_pos, build_graph_by_Knn
 
 class NCDataset(object):
     def __init__(self, name):
@@ -52,17 +56,23 @@ class NCDataset(object):
         """
 
         self.name = name  # original name, e.g., ogbn-proteins
-        self.graph = {}
+        self.graph = {}  # dictionary
         self.label = None
+        self.row = 0
+        self.col = 0
 
     def get_idx_split(self, split_type='random', train_prop=.5, valid_prop=.25, label_num_per_class=20):
         """
+        hyperSpectral image use class division by label_num_per_class = 5
+
         train_prop: The proportion of dataset for train split. Between 0 and 1.
         valid_prop: The proportion of dataset for validation split. Between 0 and 1.
         """
         
         if split_type == 'random':
+            # 忽略负样本
             ignore_negative = False if self.name == 'ogbn-proteins' else True
+
             train_idx, valid_idx, test_idx = rand_train_test_idx(
                 self.label, train_prop=train_prop, valid_prop=valid_prop, ignore_negative=ignore_negative)
             split_idx = {'train': train_idx,
@@ -73,15 +83,24 @@ class NCDataset(object):
             split_idx = {'train': train_idx,
                          'valid': valid_idx,
                          'test': test_idx}
+        # 进行高光谱图像数据集划分
+        elif split_type == 'hsi':
+            train_idx, valid_idx, test_idx = hsi_splits(self.label, train_prop, valid_prop)
+            split_idx = {'train': train_idx,
+                         'valid': valid_idx,
+                         'test': test_idx}
         return split_idx
 
+    # return the structure of graph 图结构graph structure 标签ground truth
     def __getitem__(self, idx):
         assert idx == 0, 'This dataset has only one graph'
         return self.graph, self.label
 
+    # return num of graph
     def __len__(self):
         return 1
 
+    # represent 方便打印调试
     def __repr__(self):  
         return '{}({})'.format(self.__class__.__name__, len(self))
 
@@ -124,18 +143,100 @@ def load_dataset(data_dir, dataname, sub_dataname=''):
         dataset = papers100M_sub(data_dir)
     elif dataname == 'ogbn-papers100M':
         dataset = load_papers100M(data_dir)
-    elif dataname in  ('cora', 'citeseer', 'pubmed'):
+    elif dataname in ('cora', 'citeseer', 'pubmed'):
         dataset = load_planetoid_dataset(data_dir, dataname)
-    elif dataname in  ('amazon-photo', 'amazon-computer'):
+    elif dataname in ('amazon-photo', 'amazon-computer'):
         dataset = load_amazon_dataset(data_dir, dataname)
-    elif dataname in  ('coauthor-cs', 'coauthor-physics'):
+    elif dataname in ('coauthor-cs', 'coauthor-physics'):
         dataset = load_coauthor_dataset(data_dir, dataname)
     elif dataname in ('chameleon', 'cornell', 'film', 'squirrel', 'texas', 'wisconsin'):
         dataset = load_geom_gcn_dataset(data_dir, dataname)
+    elif dataname in 'Indian_pines':
+        dataset = load_indianPines_mat(data_dir)
     else:
-        raise ValueError('Invalid dataname')
+        raise ValueError('Invalid data_name')
     return dataset
 
+
+def load_indianPines_mat(data_dir):
+    # input .mat
+    data_mat = scipy.io.loadmat(f'{data_dir}\\indian_pines_corrected.mat')
+    data = data_mat['indian_pines_corrected']
+    gt_mat = scipy.io.loadmat(f'{data_dir}\\Indian_pines_gt.mat')
+    gt = gt_mat['indian_pines_gt']
+
+    # test input
+    height, width, bands = data.shape
+    print(height, width, bands)
+
+    # build graph obj
+    dataset = NCDataset('Indian_pines')
+    # prepare data
+    node_feat = data.reshape(-1, bands)
+    node_feat = torch.tensor(node_feat).float()
+    labels = gt.reshape(-1)
+    num_nodes = int(node_feat.shape[0])
+    # 八向建图 这里返回的edge_index是tensor形式
+    #edge_index = build_graph_by_pos(height, width)
+    # knn建图 实际效果并不好 谱域接近但是空域不接近
+    # edge_index = build_graph_by_Knn(height, width, node_feat)
+
+    dataset.row = height
+    dataset.col = width
+    dataset.graph = {
+                     'edge_feat': None,
+                     'node_feat': node_feat,
+                     'num_nodes': num_nodes,}
+    dataset.label = torch.tensor(labels, dtype=torch.long)
+    return dataset
+
+def load_pokec_mat(data_dir):
+    """ requires pokec.mat """
+    if not path.exists(f'{data_dir}/pokec/pokec.mat'):
+        gdd.download_file_from_google_drive(
+            file_id= dataset_drive_url['pokec'], \
+            dest_path=f'{data_dir}/pokec/pokec.mat', showsize=True)
+
+    try:
+        fulldata = scipy.io.loadmat(f'{data_dir}/pokec/pokec.mat')
+        edge_index = fulldata['edge_index']
+        node_feat = fulldata['node_feat']
+        label = fulldata['label']
+    except:
+        edge_index = np.load(f'{data_dir}/pokec/edge_index.npy')
+        node_feat = np.load(f'{data_dir}/pokec/node_feat.npy')
+        label = np.load(f'{data_dir}/pokec/label.npy')
+
+    dataset = NCDataset('pokec')
+    edge_index = torch.tensor(edge_index, dtype=torch.long)
+    node_feat = torch.tensor(node_feat).float()
+    num_nodes = int(node_feat.shape[0])
+    dataset.graph = {'edge_index': edge_index,
+                     'edge_feat': None,
+                     'node_feat': node_feat,
+                     'num_nodes': num_nodes}
+
+    label = torch.tensor(label).flatten()
+    dataset.label = torch.tensor(label, dtype=torch.long)
+
+    def load_fixed_splits(train_prop=0.5, val_prop=0.25):
+        dir = f'{data_dir}pokec/split_0.5_0.25'
+        tensor_split_idx = {}
+        if os.path.exists(dir):
+            tensor_split_idx['train'] = torch.as_tensor(np.loadtxt(dir + '/pokec_train.txt'), dtype=torch.long)
+            tensor_split_idx['valid'] = torch.as_tensor(np.loadtxt(dir + '/pokec_valid.txt'), dtype=torch.long)
+            tensor_split_idx['test'] = torch.as_tensor(np.loadtxt(dir + '/pokec_test.txt'), dtype=torch.long)
+        else:
+            os.makedirs(dir)
+            tensor_split_idx['train'], tensor_split_idx['valid'], tensor_split_idx['test'] \
+                = rand_train_test_idx(dataset.label, train_prop=train_prop, valid_prop=val_prop)
+            np.savetxt(dir + '/pokec_train.txt', tensor_split_idx['train'], fmt='%d')
+            np.savetxt(dir + '/pokec_valid.txt', tensor_split_idx['valid'], fmt='%d')
+            np.savetxt(dir + '/pokec_test.txt', tensor_split_idx['test'], fmt='%d')
+        return tensor_split_idx
+
+    dataset.load_fixed_splits = load_fixed_splits
+    return dataset
 
 def load_twitch_dataset(data_dir, lang):
     assert lang in ('DE', 'ENGB', 'ES', 'FR', 'PTBR', 'RU', 'TW'), 'Invalid dataset'
@@ -367,54 +468,6 @@ def load_ogb_dataset(data_dir, name):
     dataset.label = torch.as_tensor(ogb_dataset.labels).reshape(-1, 1)
     return dataset
 
-
-def load_pokec_mat(data_dir):
-    """ requires pokec.mat """
-    if not path.exists(f'{data_dir}/pokec/pokec.mat'):
-        gdd.download_file_from_google_drive(
-            file_id= dataset_drive_url['pokec'], \
-            dest_path=f'{data_dir}/pokec/pokec.mat', showsize=True)
-
-    try:
-        fulldata = scipy.io.loadmat(f'{data_dir}/pokec/pokec.mat')
-        edge_index = fulldata['edge_index']
-        node_feat = fulldata['node_feat']
-        label = fulldata['label']
-    except:
-        edge_index = np.load(f'{data_dir}/pokec/edge_index.npy')
-        node_feat = np.load(f'{data_dir}/pokec/node_feat.npy')
-        label = np.load(f'{data_dir}/pokec/label.npy')
-
-    dataset = NCDataset('pokec')
-    edge_index = torch.tensor(edge_index, dtype=torch.long)
-    node_feat = torch.tensor(node_feat).float()
-    num_nodes = int(node_feat.shape[0])
-    dataset.graph = {'edge_index': edge_index,
-                     'edge_feat': None,
-                     'node_feat': node_feat,
-                     'num_nodes': num_nodes}
-
-    label = torch.tensor(label).flatten()
-    dataset.label = torch.tensor(label, dtype=torch.long)
-
-    def load_fixed_splits(train_prop=0.5, val_prop=0.25):
-        dir = f'{data_dir}pokec/split_0.5_0.25'
-        tensor_split_idx = {}
-        if os.path.exists(dir):
-            tensor_split_idx['train'] = torch.as_tensor(np.loadtxt(dir + '/pokec_train.txt'), dtype=torch.long)
-            tensor_split_idx['valid'] = torch.as_tensor(np.loadtxt(dir + '/pokec_valid.txt'), dtype=torch.long)
-            tensor_split_idx['test'] = torch.as_tensor(np.loadtxt(dir + '/pokec_test.txt'), dtype=torch.long)
-        else:
-            os.makedirs(dir)
-            tensor_split_idx['train'], tensor_split_idx['valid'], tensor_split_idx['test'] \
-                = rand_train_test_idx(dataset.label, train_prop=train_prop, valid_prop=val_prop)
-            np.savetxt(dir + '/pokec_train.txt', tensor_split_idx['train'], fmt='%d')
-            np.savetxt(dir + '/pokec_valid.txt', tensor_split_idx['valid'], fmt='%d')
-            np.savetxt(dir + '/pokec_test.txt', tensor_split_idx['test'], fmt='%d')
-        return tensor_split_idx
-
-    dataset.load_fixed_splits = load_fixed_splits
-    return dataset
 
 def load_snap_patents_mat(data_dir, nclass=5):
     if not path.exists(f'{data_dir}snap_patents.mat'):

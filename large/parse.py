@@ -1,7 +1,11 @@
 from gnns import *
 from ours import *
+# 这里他调用了ours文件，也就是作者写的方法和对比方法的引入，所以我们只需要关注ours就可以
 
 def parse_method(args, c, d, device):
+    """
+    function: 根据提供的参数创建不同图神经网络（GNN）模型
+    """
     if args.method == 'gcn':
         model = GCN(in_channels=d,
                     hidden_channels=args.hidden_channels,
@@ -41,9 +45,10 @@ def parse_method(args, c, d, device):
         raise ValueError('Invalid method')
     return model
 
-
 def parser_add_main_args(parser):
-    # dataset and evaluation
+    """
+    function: dataset and evaluation 据命令行输入的信息进行参数的设置，包括默认参数的设置
+    """
     parser.add_argument('--dataset', type=str, default='cora')
     parser.add_argument('--sub_dataset', type=str, default='')
     parser.add_argument('--data_dir', type=str, default='../../../NodeFormer/data/')
@@ -66,7 +71,7 @@ def parser_add_main_args(parser):
     parser.add_argument('--rand_split_class', action='store_true',
                         help='use random splits with a fixed number of labeled nodes for each class')
     parser.add_argument('--label_num_per_class', type=int, default=20, help='labeled nodes randomly selected')
-    parser.add_argument('--metric', type=str, default='acc', choices=['acc', 'rocauc', 'f1'],
+    parser.add_argument('--metric', type=str, default='acc', choices=['acc', 'rocauc', 'f1', 'oa'],
                         help='evaluation metric')
 
     # gnn branch

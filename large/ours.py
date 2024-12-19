@@ -22,22 +22,23 @@ class GraphConvLayer(nn.Module):
     def reset_parameters(self):
         self.W.reset_parameters()
 
-    def forward(self, x, edge_index, x0):
+    def forward(self, x, edge_index, x0, edge_weight):
         N = x.shape[0]
-        row, col = edge_index
-        d = degree(col, N).float()
-        d_norm_in = (1. / d[col]).sqrt()
+        row, col = edge_index  # 记录起点、终点
+        d = degree(col, N).float()  # 记录col中每个节点出现的次数
+        d_norm_in = (1. / d[col]).sqrt()  # 每个起点的标准化Din
         d_norm_out = (1. / d[row]).sqrt()
         value = torch.ones_like(row) * d_norm_in * d_norm_out
         value = torch.nan_to_num(value, nan=0.0, posinf=0.0, neginf=0.0)
+        value = torch.maximum(value, torch.tensor(0.1))  # 确保没有小于0.1的值 trick
         adj = SparseTensor(row=col, col=row, value=value, sparse_sizes=(N, N))
-        x = matmul(adj, x)  # [N, D]
+        x = matmul(adj, x)  # 特征聚合
 
         if self.use_init:
             x = torch.cat([x, x0], 1)
             x = self.W(x)
         elif self.use_weight:
-            x = self.W(x)
+            x = self.W(x)  # 对聚合后的特征进行线性变换 学习特征
 
         return x
 
@@ -52,6 +53,7 @@ class GraphConv(nn.Module):
 
         self.bns = nn.ModuleList()
         self.bns.append(nn.BatchNorm1d(hidden_channels))
+
         for _ in range(num_layers):
             self.convs.append(
                 GraphConvLayer(hidden_channels, hidden_channels, use_weight, use_init))
@@ -71,26 +73,26 @@ class GraphConv(nn.Module):
         for fc in self.fcs:
             fc.reset_parameters()
 
-    def forward(self, x, edge_index):
-        layer_ = []
+    def forward(self, x, edge_index, edge_weight):  # 从SGFormer处得到的边权
+        layer_ = []  # 保存每层的输出 用于残差连接
 
-        x = self.fcs[0](x)
+        x = self.fcs[0](x)  # 通过第一个fc进行通道对齐
         if self.use_bn:
             x = self.bns[0](x)
         x = self.activation(x)
-        x = F.dropout(x, p=self.dropout, training=self.training)
+        x = F.dropout(x, p=self.dropout, training=self.training)  # 随机丢弃神经元
 
-        layer_.append(x)
+        layer_.append(x)  # 输出保存，残差连接使用
 
-        for i, conv in enumerate(self.convs):
-            x = conv(x, edge_index, layer_[0])
+        for i, conv in enumerate(self.convs):  # 遍历卷积层实例
+            x = conv(x, edge_index, layer_[0], edge_weight)
             if self.use_bn:
                 x = self.bns[i+1](x)
             if self.use_act:
                 x = self.activation(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
             if self.use_residual:
-                x = x + layer_[-1]
+                x = x + layer_[-1]  # 与上一层的输出相加
         return x
 
 class TransConvLayer(nn.Module):
@@ -247,7 +249,7 @@ class SGFormer(nn.Module):
         self.trans_conv = TransConv(in_channels, hidden_channels, trans_num_layers, trans_num_heads, trans_dropout, trans_use_bn, trans_use_residual, trans_use_weight, trans_use_act)
         self.graph_conv = GraphConv(in_channels, hidden_channels, gnn_num_layers, gnn_dropout, gnn_use_bn, gnn_use_residual, gnn_use_weight, gnn_use_init, gnn_use_act)
         self.use_graph = use_graph
-        self.graph_weight = graph_weight
+        self.graph_weight = graph_weight  # 图卷级的权重
 
         self.aggregate = aggregate
 
@@ -258,20 +260,23 @@ class SGFormer(nn.Module):
         else:
             raise ValueError(f'Invalid aggregate type:{aggregate}')
 
+        # 获取各层之间的可训练参数 放入list中
         self.params1 = list(self.trans_conv.parameters())
         self.params2 = list(self.graph_conv.parameters()) if self.graph_conv is not None else []
         self.params2.extend(list(self.fc.parameters()))
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index, edge_weight):  # 这里增加了边权
         x1 = self.trans_conv(x)
         if self.use_graph:
-            x2 = self.graph_conv(x, edge_index)
+            x2 = self.graph_conv(x, edge_index, edge_weight)  # 增加边权版本
             if self.aggregate == 'add':
                 x = self.graph_weight * x2 + (1 - self.graph_weight) * x1
             else:
+                # transformer和GNN concat
                 x = torch.cat((x1, x2), dim=1)
         else:
             x = x1
+        # 全连接层
         x = self.fc(x)
         return x
     
