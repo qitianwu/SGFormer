@@ -1,12 +1,12 @@
 # SGFormer: Simplified Graph Transformers
 
-The official implementation for NeurIPS23 paper "SGFormer: Simplifying and Empowering Transformers for Large-Graph Representations".
+The official implementation for NeurIPS2023 paper "SGFormer: Simplifying and Empowering Transformers for Large-Graph Representations".
 
 Related material: [[Paper](https://arxiv.org/pdf/2306.10759.pdf)], [[Blog](https://zhuanlan.zhihu.com/p/674548352)], [[Video](https://www.bilibili.com/video/BV1Gx4y1r7ZQ/?spm_id_from=333.999.0.0&vd_source=dd4795a9e34dbf19550fff1087216477)]
 
 SGFormer is a graph encoder backbone that efficiently computes all-pair interactions with one-layer attentive propagation.
 
-SGFormer is built upon our previous works on scalable graph Transformers with linear complexity [NodeFormer](https://github.com/qitianwu/NodeFormer) (NeurIPS22, spotlight) and [DIFFormer](https://github.com/qitianwu/DIFFormer) (ICLR23, spotlight). 
+SGFormer is built upon our previous works on scalable graph Transformers with linear complexity [NodeFormer](https://github.com/qitianwu/NodeFormer) (NeurIPS2022, spotlight) and [DIFFormer](https://github.com/qitianwu/DIFFormer) (ICLR2023, spotlight). 
 
 ## What's news
 
